@@ -13,7 +13,10 @@ import org.identityconnectors.framework.common.objects.Uid;
 import org.identityconnectors.test.common.TestHelpers;
 import org.junit.Test;
 
-public class SampleConnectorTests {
+import eu.bcvsolutions.idm.connector.RSAConnConfiguration;
+import eu.bcvsolutions.idm.connector.RSAConnConnector;
+
+public class RsaConnectorTests {
 
     protected RSAConnConfiguration newConfiguration() {
         return new RSAConnConfiguration();

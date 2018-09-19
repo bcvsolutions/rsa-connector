@@ -12,3 +12,9 @@ buildNumber.properties
 !/.mvn/wrapper/maven-wrapper.jar
 .idea/
 rsa-connector.iml
+/.apt_generated_tests/
+/target/
+/.settings/
+/.classpath
+/.project
+/.factorypath

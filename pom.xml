@@ -28,17 +28,17 @@
   <parent>
     <groupId>net.tirasa.connid</groupId>
     <artifactId>connid</artifactId>
-    <version xmlns="">1.4.4.0</version>
+    <version>1.4.3.0</version>
   </parent>
-    
-  <groupId>eu.bcvsolutions</groupId>
+
+  <groupId>eu.bcvsolutions.idm.connector</groupId>
   <artifactId>rsa-connector</artifactId>
-  <version>1.0-SNAPSHOT</version>        
-  <name>ConnId Sample Bundle</name>
+  <version>1.0.0</version>
+  <name>RSA Connector</name>
   <packaging>jar</packaging>
 
   <properties>
-    <connid.version xmlns="">1.4.4.0</connid.version>
+    <connid.version xmlns="">1.4.3.0</connid.version>
         
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
@@ -54,6 +54,22 @@
       <artifactId>connector-framework-internal</artifactId>
       <version>${connid.version}</version>
     </dependency>
+    
+    <!-- External RSA library -->
+    <dependency>
+		<groupId>com.rsa</groupId>
+		<artifactId>am-client</artifactId>
+		<version>1.0</version>
+<!-- 		<scope>system</scope>
+		<systemPath>${basedir}/lib/am-client.jar</systemPath> -->
+	</dependency>
+    <dependency>
+		<groupId>org.springframework</groupId>
+		<artifactId>spring-web</artifactId>
+		<version>3.2.8.RELEASE</version>
+<!-- 		<scope>system</scope>
+		<systemPath>${basedir}/lib/am-client.jar</systemPath> -->
+	</dependency>
         
     <!-- TEST -->        
     <dependency>
@@ -72,14 +88,28 @@
   <build>
     <plugins>
       <!-- Disable any licese check -->  
-      <plugin>        
+<!--       <plugin>        
         <groupId>com.mycila.maven-license-plugin</groupId>
         <artifactId>maven-license-plugin</artifactId>
         <inherited>true</inherited>
         <configuration>
           <skip>true</skip>
         </configuration>
-      </plugin>
+      </plugin> -->
+      <plugin>
+		<groupId>org.apache.maven.plugins</groupId>
+		<artifactId>maven-jar-plugin</artifactId>
+		<configuration>
+			<archive>
+				<addMavenDescriptor>false</addMavenDescriptor>
+				<manifestEntries>
+					<ConnectorBundle-FrameworkVersion>${connid.version}</ConnectorBundle-FrameworkVersion>
+					<ConnectorBundle-Name>${project.artifactId}</ConnectorBundle-Name>
+					<ConnectorBundle-Version>${project.version}</ConnectorBundle-Version>
+				</manifestEntries>
+			</archive>
+		</configuration>
+	</plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-resources-plugin</artifactId>
@@ -113,7 +143,7 @@
         <artifactId>maven-assembly-plugin</artifactId>
         <inherited>true</inherited>
         <configuration>
-          <appendAssemblyId>true</appendAssemblyId>
+          <appendAssemblyId>false</appendAssemblyId>
           <descriptors>
             <descriptor>src/assemble/connector.xml</descriptor>
           </descriptors>

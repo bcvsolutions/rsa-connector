@@ -1,12 +1,24 @@
 package eu.bcvsolutions.idm.connector;
 
+import com.rsa.admin.SearchPrincipalsCommand;
+import com.rsa.command.ClientSession;
+import com.rsa.command.CommandException;
+import com.rsa.command.CommandTargetPolicy;
+import com.rsa.command.Connection;
+import com.rsa.command.ConnectionFactory;
+
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Collections;
 import java.util.Set;
 import java.util.UUID;
 import org.identityconnectors.common.logging.Log;
 import org.identityconnectors.common.security.GuardedString;
+import org.identityconnectors.common.security.GuardedString.Accessor;
 import org.identityconnectors.framework.api.operations.APIOperation;
 import org.identityconnectors.framework.api.operations.ResolveUsernameApiOp;
+import org.identityconnectors.framework.common.exceptions.ConnectionFailedException;
+import org.identityconnectors.framework.common.exceptions.ConnectorException;
 import org.identityconnectors.framework.common.objects.Attribute;
 import org.identityconnectors.framework.common.objects.ObjectClass;
 import org.identityconnectors.framework.common.objects.ObjectClassInfo;
@@ -32,11 +44,17 @@ import org.identityconnectors.framework.spi.operations.TestOp;
 import org.identityconnectors.framework.spi.operations.UpdateAttributeValuesOp;
 import org.identityconnectors.framework.spi.operations.UpdateOp;
 
+//import com.rsa.authmgr.admin.ondemandmgt.data.OnDemandAuthenticatorDTO;
+//import com.rsa.authmgr.admin.ondemandmgt.EnableOnDemandForPrincipalCommand;
+//import com.rsa.authmgr.admin.ondemandmgt.DisableOnDemandForPrincipalCommand;
+
 /**
  * This sample connector provides (empty) implementations for all ConnId operations, but this is not mandatory: any
  * connector can choose which operations are actually to be implemented.
+ * 
+ * @author Petr Hanak
  */
-@ConnectorClass(configurationClass = RSAConnConfiguration.class, displayNameKey = "sample.connector.display")
+@ConnectorClass(configurationClass = RSAConnConfiguration.class, displayNameKey = "RSA_CONNECTOR_DISPLAY")
 public class RSAConnConnector implements Connector,
         CreateOp, UpdateOp, UpdateAttributeValuesOp, DeleteOp,
         AuthenticateOp, ResolveUsernameApiOp, SchemaOp, SyncOp, TestOp, SearchOp<RSAConnFilter> {
@@ -44,6 +62,13 @@ public class RSAConnConnector implements Connector,
     private static final Log LOG = Log.getLog(RSAConnConnector.class);
 
     private RSAConnConfiguration configuration;
+
+	/**
+	 * An instance of a Connection to the RSA Server
+	 */
+	private ClientSession RSAsession;
+	
+	private Connection conn;
 
     @Override
     public RSAConnConfiguration getConfiguration() {
@@ -150,7 +175,27 @@ public class RSAConnConnector implements Connector,
 
     @Override
     public void test() {
-    }
+    	LOG.info("Starting TEST");
+//    	final GuardedString password = configuration.getPassword();
+    	final String username = configuration.getUsername();
+    	final String password = configuration.getStringPassword();
+    	final String url = configuration.getUrl();
+    	
+		try {
+			Connection conn = ConnectionFactory.getConnection("CommandAPIConnection");
+			LOG.info("Connection factory initialized!");
+			this.RSAsession = conn.connect(username, password);
+			LOG.info("Username and password allright tho");
+            // make all commands execute using this target automatically
+			// CommandTargetPolicy.setDefaultCommandTarget(RSAsession);
+//			LOG.info("Connection succeeded: {0}", this.RSAsession.getSessionId());
+		} catch (CommandException e) {
+			throw new ConnectionFailedException(e);
+		}
+		if (this.RSAsession == null) {
+			throw new ConnectionFailedException("Připojení selhalo");
+		}
+	}
 
     @Override
     public FilterTranslator<RSAConnFilter> createFilterTranslator(
@@ -167,5 +212,6 @@ public class RSAConnConnector implements Connector,
             final RSAConnFilter query,
             final ResultsHandler handler,
             final OperationOptions options) {
+
     }
 }
