@@ -10,23 +10,60 @@ import org.identityconnectors.framework.spi.ConfigurationProperty;
  * Main configuration class. Here are set all attributes which are needed for connection
  *
  * @author Petr Hanak
+ * 
  */
 public class RSAConnConfiguration extends AbstractConfiguration {
 
-	private String url = "";
+    // Constants
+    public static final String RSA_DOMAIN = "SystemDomain";
+    public static final String CONFIG_PROPERTIES_FILE = "config.properties";
+    public static final String DATE_FORMAT = "yyyy/MM/dd";
+    public static final Integer SEARCH_LIMIT_DEFAULT = 100000;
+    
+    // Configuration    
     private String username = "";
     private GuardedString password;
     private String stringPassword;
+    /**
+     * The RSA Security Domain to use with this Connector instance
+     */
+    private String SecurityDomain = null;
+    /** 
+     * User ID for process-level Authentication.
+     */ 
+    private String cmdClientUser = null;
     
-    @ConfigurationProperty(displayMessageKey = "url.display",
-            helpMessageKey = "url.help", order = 1)
-    public String getUrl() {
-        return url;
+    private String identitySource = null;
+    
+    @ConfigurationProperty(order = 1, displayMessageKey = "CmdclientUser.display",
+            helpMessageKey = "CmdclientUser.help",
+            required = false, confidential = false)
+    public String getCmdclientUser() {
+        return cmdClientUser;
     }
-
-    public void setUrl(String url) {
-        this.url = url;
+    public void setCmdclientUser(String CmdclientUser) {
+        this.cmdClientUser = CmdclientUser;
     }
+    
+    @ConfigurationProperty(order = 1, displayMessageKey = "IdentitySource.display",
+    helpMessageKey = "IdentitySource.help",
+    required = false, confidential = false)
+	public String getIdentitySource() {
+		return identitySource;
+	}
+	public void setIdentitySource(String identitySource) {
+		this.identitySource = identitySource;
+	}
+	
+	@ConfigurationProperty(order = 1, displayMessageKey = "SecurityDomain.display",
+			helpMessageKey = "SecurityDomain.help",
+			required = false, confidential = false)
+	public String getSecurityDomain() {
+		return SecurityDomain;
+	}
+	public void setSecurityDomain(String SecurityDomain) {
+		this.SecurityDomain = SecurityDomain;
+	}
     
     @ConfigurationProperty(displayMessageKey = "username.display",
     		helpMessageKey = "username.help", order = 2)

@@ -1,24 +1,17 @@
 package eu.bcvsolutions.idm.connector;
 
-import com.rsa.admin.SearchPrincipalsCommand;
 import com.rsa.command.ClientSession;
-import com.rsa.command.CommandException;
 import com.rsa.command.CommandTargetPolicy;
-import com.rsa.command.Connection;
-import com.rsa.command.ConnectionFactory;
+import com.rsa.common.search.Filter;
 
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.Collections;
 import java.util.Set;
 import java.util.UUID;
 import org.identityconnectors.common.logging.Log;
 import org.identityconnectors.common.security.GuardedString;
-import org.identityconnectors.common.security.GuardedString.Accessor;
 import org.identityconnectors.framework.api.operations.APIOperation;
 import org.identityconnectors.framework.api.operations.ResolveUsernameApiOp;
-import org.identityconnectors.framework.common.exceptions.ConnectionFailedException;
-import org.identityconnectors.framework.common.exceptions.ConnectorException;
+import org.identityconnectors.framework.common.exceptions.UnknownUidException;
 import org.identityconnectors.framework.common.objects.Attribute;
 import org.identityconnectors.framework.common.objects.ObjectClass;
 import org.identityconnectors.framework.common.objects.ObjectClassInfo;
@@ -44,9 +37,11 @@ import org.identityconnectors.framework.spi.operations.TestOp;
 import org.identityconnectors.framework.spi.operations.UpdateAttributeValuesOp;
 import org.identityconnectors.framework.spi.operations.UpdateOp;
 
-//import com.rsa.authmgr.admin.ondemandmgt.data.OnDemandAuthenticatorDTO;
-//import com.rsa.authmgr.admin.ondemandmgt.EnableOnDemandForPrincipalCommand;
-//import com.rsa.authmgr.admin.ondemandmgt.DisableOnDemandForPrincipalCommand;
+import com.rsa.authmgr.admin.ondemandmgt.data.OnDemandAuthenticatorDTO;
+import com.rsa.authmgr.admin.ondemandmgt.EnableOnDemandForPrincipalCommand;
+import com.rsa.admin.SearchPrincipalsCommand;
+import com.rsa.admin.data.PrincipalDTO;
+import com.rsa.authmgr.admin.ondemandmgt.DisableOnDemandForPrincipalCommand;
 
 /**
  * This sample connector provides (empty) implementations for all ConnId operations, but this is not mandatory: any
@@ -59,16 +54,26 @@ public class RSAConnConnector implements Connector,
         CreateOp, UpdateOp, UpdateAttributeValuesOp, DeleteOp,
         AuthenticateOp, ResolveUsernameApiOp, SchemaOp, SyncOp, TestOp, SearchOp<RSAConnFilter> {
 
-    private static final Log LOG = Log.getLog(RSAConnConnector.class);
+    /**
+     * Setup logging for the {@link RSAConnConnector}.
+     */
+    private static final Log logger = Log.getLog(RSAConnConnector.class);
 
     private RSAConnConfiguration configuration;
-
-	/**
-	 * An instance of a Connection to the RSA Server
-	 */
-	private ClientSession RSAsession;
 	
-	private Connection conn;
+	   /**
+     * Place holder for the Connection created in the init method.
+     */
+    private RSAConnConnection connection;
+
+    /**
+     * Gets the Connection context for this connector.
+     *
+     * @return The current RSA Connection
+     */
+    public RSAConnConnection getConnection() {
+        return connection;
+    }
 
     @Override
     public RSAConnConfiguration getConfiguration() {
@@ -78,12 +83,17 @@ public class RSAConnConnector implements Connector,
     @Override
     public void init(final Configuration configuration) {
         this.configuration = (RSAConnConfiguration) configuration;
-        LOG.ok("Connector {0} successfully inited", getClass().getName());
+        this.connection = new RSAConnConnection(this.configuration);
+        logger.ok("Connector {0} successfully inited", getClass().getName());
     }
 
     @Override
     public void dispose() {
-        // dispose of any resources the this connector uses.
+        if (connection != null) {
+            connection.dispose();
+            connection = null;
+        }
+        configuration = null;
     }
 
     @Override
@@ -91,6 +101,16 @@ public class RSAConnConnector implements Connector,
             final ObjectClass objectClass,
             final Set<Attribute> createAttributes,
             final OperationOptions options) {
+    	try {
+    		OnDemandAuthenticatorDTO oda = new OnDemandAuthenticatorDTO();
+    		EnableOnDemandForPrincipalCommand enableOnDemand = new EnableOnDemandForPrincipalCommand(oda); 
+			PrincipalDTO user = lookUpUser("vkotynek");
+			enableOnDemand.execute();
+			
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
         return new Uid(UUID.randomUUID().toString());
     }
@@ -101,6 +121,9 @@ public class RSAConnConnector implements Connector,
             final Uid uid,
             final Set<Attribute> replaceAttributes,
             final OperationOptions options) {
+//    	1) Najít uživatele
+//    	2) Povolit On-demand authentication
+//		3) Nastavit pin 1234
 
         return uid;
     }
@@ -175,26 +198,17 @@ public class RSAConnConnector implements Connector,
 
     @Override
     public void test() {
-    	LOG.info("Starting TEST");
-//    	final GuardedString password = configuration.getPassword();
-    	final String username = configuration.getUsername();
-    	final String password = configuration.getStringPassword();
-    	final String url = configuration.getUrl();
-    	
-		try {
-			Connection conn = ConnectionFactory.getConnection("CommandAPIConnection");
-			LOG.info("Connection factory initialized!");
-			this.RSAsession = conn.connect(username, password);
-			LOG.info("Username and password allright tho");
-            // make all commands execute using this target automatically
-			// CommandTargetPolicy.setDefaultCommandTarget(RSAsession);
-//			LOG.info("Connection succeeded: {0}", this.RSAsession.getSessionId());
-		} catch (CommandException e) {
-			throw new ConnectionFailedException(e);
-		}
-		if (this.RSAsession == null) {
-			throw new ConnectionFailedException("Připojení selhalo");
-		}
+        logger.info("Performing Connector Test");
+        this.connection.test();
+        String defCommandTgt = null;
+        defCommandTgt = CommandTargetPolicy.getDefaultCommandTarget().toString();
+        logger.info("Using default command target for this thread: {0}",defCommandTgt);
+        /*try {
+            this.lookupSecurityDomain(this.configuration.getSecurityDomain());
+        } catch (Exception ex) {
+            logger.error("Connection Test Failed: {0}", ex.getMessage());
+            throw new RuntimeException("Connection Test Failed", ex);
+        }*/
 	}
 
     @Override
@@ -213,5 +227,38 @@ public class RSAConnConnector implements Connector,
             final ResultsHandler handler,
             final OperationOptions options) {
 
+    }
+    
+    /**
+     * Lookup a user by login UID.
+     *
+     * @param userId the user login UID
+     * @return the user record.
+     * @throws Exception
+     */
+    private PrincipalDTO lookUpUser(String userId) throws Exception {
+        SearchPrincipalsCommand cmd = new SearchPrincipalsCommand();
+
+        // create a filter with the login UID equal condition
+        cmd.setFilter(Filter.equal(PrincipalDTO.LOGINUID, userId));
+        cmd.setSystemFilter(Filter.empty());
+        cmd.setLimit(1);
+        cmd.setIdentitySourceGuid(connection.getIdSource().getGuid());
+        cmd.setSecurityDomainGuid(connection.getDomain().getGuid());
+        cmd.setGroupGuid(null);
+        cmd.setOnlyRegistered(true);
+        cmd.setSearchSubDomains(true);
+        cmd.setAttributeMask(new String[]{"ALL_INTRINSIC_ATTRIBUTES", "CORE_ATTRIBUTES", "SYSTEM_ATTRIBUTES", "ALL_EXTENDED_ATTRIBUTES"}); //"ALL_ATTRIBUTES"
+
+        ClientSession ses = connection.newSession();
+                cmd.execute(ses);
+                connection.sessionLogout(ses);
+        
+
+        if (cmd.getPrincipals().length < 1) {
+            throw new UnknownUidException("Unable to find user " + userId + ".");
+        }
+
+        return cmd.getPrincipals()[0];
     }
 }
