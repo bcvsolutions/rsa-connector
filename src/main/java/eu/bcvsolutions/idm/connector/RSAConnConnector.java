@@ -38,6 +38,7 @@ import org.identityconnectors.framework.spi.operations.UpdateAttributeValuesOp;
 import org.identityconnectors.framework.spi.operations.UpdateOp;
 
 import com.rsa.authmgr.admin.ondemandmgt.data.OnDemandAuthenticatorDTO;
+import com.rsa.authmgr.common.ondemandmgt.PinIndicator;
 import com.rsa.authmgr.admin.ondemandmgt.EnableOnDemandForPrincipalCommand;
 import com.rsa.admin.SearchPrincipalsCommand;
 import com.rsa.admin.data.PrincipalDTO;
@@ -101,16 +102,7 @@ public class RSAConnConnector implements Connector,
             final ObjectClass objectClass,
             final Set<Attribute> createAttributes,
             final OperationOptions options) {
-    	try {
-    		OnDemandAuthenticatorDTO oda = new OnDemandAuthenticatorDTO();
-    		EnableOnDemandForPrincipalCommand enableOnDemand = new EnableOnDemandForPrincipalCommand(oda); 
-			PrincipalDTO user = lookUpUser("vkotynek");
-			enableOnDemand.execute();
-			
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+    	
 
         return new Uid(UUID.randomUUID().toString());
     }
@@ -203,6 +195,9 @@ public class RSAConnConnector implements Connector,
         String defCommandTgt = null;
         defCommandTgt = CommandTargetPolicy.getDefaultCommandTarget().toString();
         logger.info("Using default command target for this thread: {0}",defCommandTgt);
+        
+//        enableOnDemandAuthentication("vkotynek");
+        
         /*try {
             this.lookupSecurityDomain(this.configuration.getSecurityDomain());
         } catch (Exception ex) {
@@ -227,38 +222,5 @@ public class RSAConnConnector implements Connector,
             final ResultsHandler handler,
             final OperationOptions options) {
 
-    }
-    
-    /**
-     * Lookup a user by login UID.
-     *
-     * @param userId the user login UID
-     * @return the user record.
-     * @throws Exception
-     */
-    private PrincipalDTO lookUpUser(String userId) throws Exception {
-        SearchPrincipalsCommand cmd = new SearchPrincipalsCommand();
-
-        // create a filter with the login UID equal condition
-        cmd.setFilter(Filter.equal(PrincipalDTO.LOGINUID, userId));
-        cmd.setSystemFilter(Filter.empty());
-        cmd.setLimit(1);
-        cmd.setIdentitySourceGuid(connection.getIdSource().getGuid());
-        cmd.setSecurityDomainGuid(connection.getDomain().getGuid());
-        cmd.setGroupGuid(null);
-        cmd.setOnlyRegistered(true);
-        cmd.setSearchSubDomains(true);
-        cmd.setAttributeMask(new String[]{"ALL_INTRINSIC_ATTRIBUTES", "CORE_ATTRIBUTES", "SYSTEM_ATTRIBUTES", "ALL_EXTENDED_ATTRIBUTES"}); //"ALL_ATTRIBUTES"
-
-        ClientSession ses = connection.newSession();
-                cmd.execute(ses);
-                connection.sessionLogout(ses);
-        
-
-        if (cmd.getPrincipals().length < 1) {
-            throw new UnknownUidException("Unable to find user " + userId + ".");
-        }
-
-        return cmd.getPrincipals()[0];
     }
 }

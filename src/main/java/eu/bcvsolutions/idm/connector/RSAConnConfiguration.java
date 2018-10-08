@@ -32,6 +32,7 @@ public class RSAConnConfiguration extends AbstractConfiguration {
      * User ID for process-level Authentication.
      */ 
     private String cmdClientUser = null;
+    private String cmdClientPassword = null;
     
     private String identitySource = null;
     
@@ -43,6 +44,16 @@ public class RSAConnConfiguration extends AbstractConfiguration {
     }
     public void setCmdclientUser(String CmdclientUser) {
         this.cmdClientUser = CmdclientUser;
+    }
+    
+    @ConfigurationProperty(order = 1, displayMessageKey = "CmdclientPassword.display",
+    		helpMessageKey = "CmdclientPassword.help",
+    		required = false, confidential = false)
+    public String getCmdclientPassword() {
+    	return cmdClientPassword;
+    }
+    public void setCmdclientPassword(String CmdclientUser) {
+    	this.cmdClientPassword = CmdclientUser;
     }
     
     @ConfigurationProperty(order = 1, displayMessageKey = "IdentitySource.display",

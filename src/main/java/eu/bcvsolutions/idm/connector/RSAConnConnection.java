@@ -11,6 +11,7 @@ import com.rsa.admin.data.RealmDTO;
 import com.rsa.admin.data.SecurityDomainDTO;
 import com.rsa.command.ClientSession;
 import com.rsa.command.CommandException;
+import com.rsa.command.CommandTargetPolicy;
 import com.rsa.command.Connection;
 import com.rsa.command.ConnectionFactory;
 import com.rsa.command.InvalidSessionException;
@@ -55,7 +56,7 @@ public class RSAConnConnection {
 		this.RSAsession = newSession();
         
         // make all commands execute using this target automatically
-        //CommandTargetPolicy.setDefaultCommandTarget(this.RSAsession);
+        CommandTargetPolicy.setDefaultCommandTarget(this.RSAsession);
         
         logger.info("Using session with ID: {0}.", this.RSAsession.getSessionId());
         
@@ -108,6 +109,7 @@ public class RSAConnConnection {
             domain = realms[0].getTopLevelSecurityDomain();
             logger.info("Found RSA SecurityDomain: " + domain.getName());
             
+            // Iterate over Identity Sources to find one by name             
             IdentitySourceDTO[] idSources = realms[0].getIdentitySources();
             String idSourceName = configuration.getIdentitySource();
             int sourceNum = 0;
@@ -118,7 +120,17 @@ public class RSAConnConnection {
             }
             idSource = idSources[sourceNum];
             logger.info("Found RSA ID Source: " + idSource.getName());
-        } 
+            final RSAConnUtils utils = new RSAConnUtils(this);
+            
+            try {
+//				PrincipalDTO user = utils.lookUpUser("vkotynek");
+				utils.enableOnDemandAuthentication("vkotynek");
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+        }
+
+        
 	}
 	
     /**
@@ -232,6 +244,36 @@ public class RSAConnConnection {
         }
 
         return newSession;
+    }
+    
+    /**
+     * Creates and returns a brand new connection for cmd client session (rather than pooled/cached connection).
+     * This may be preferable to use with some commands
+     * 
+     * @return a ClientSession.
+     */
+    public ClientSession newCmdClientSession() {
+    	ClientSession newSession;
+    	String username = configuration.getCmdclientUser();
+    	String password = configuration.getCmdclientPassword();
+    	logger.info("Creating a new Session");
+    	
+    	// establish a connected session with given credentials
+    	Connection conn = ConnectionFactory.getConnection("CommandAPIConnection"); // "CommandAPIConnection"  // createConfigProperties()
+    	logger.info ("Connection instantiated. Attempting to login...");
+    	
+//        String PlainPwd = RSAAuthenticationManager8Utils.getPlainPassword(this.configuration.getUserMgrPwd());
+    	
+    	try {
+    		newSession = conn.connect(username, password);
+    		logger.info("Connection succeeded: {0}", newSession.getSessionId());
+    	} catch (CommandException e) {
+    		logger.error("Failed to connect to the RSA server. Error: " + e.getMessage() + " key: " +e.getMessageKey() + " cause: " + e.getCause() 
+    		+ "\n User: " + username + " - Pwd: " + password);
+    		throw new org.identityconnectors.framework.common.exceptions.ConnectionFailedException(e);
+    	}
+    	
+    	return newSession;
     }
 	
     /**
