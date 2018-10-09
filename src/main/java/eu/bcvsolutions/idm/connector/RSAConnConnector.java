@@ -5,6 +5,7 @@ import com.rsa.command.CommandTargetPolicy;
 import com.rsa.common.search.Filter;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 import org.identityconnectors.common.logging.Log;
@@ -13,12 +14,16 @@ import org.identityconnectors.framework.api.operations.APIOperation;
 import org.identityconnectors.framework.api.operations.ResolveUsernameApiOp;
 import org.identityconnectors.framework.common.exceptions.UnknownUidException;
 import org.identityconnectors.framework.common.objects.Attribute;
+import org.identityconnectors.framework.common.objects.AttributeInfo;
+import org.identityconnectors.framework.common.objects.AttributeInfoBuilder;
+import org.identityconnectors.framework.common.objects.Name;
 import org.identityconnectors.framework.common.objects.ObjectClass;
 import org.identityconnectors.framework.common.objects.ObjectClassInfo;
 import org.identityconnectors.framework.common.objects.OperationOptionInfo;
 import org.identityconnectors.framework.common.objects.OperationOptions;
 import org.identityconnectors.framework.common.objects.ResultsHandler;
 import org.identityconnectors.framework.common.objects.Schema;
+import org.identityconnectors.framework.common.objects.SchemaBuilder;
 import org.identityconnectors.framework.common.objects.SyncResultsHandler;
 import org.identityconnectors.framework.common.objects.SyncToken;
 import org.identityconnectors.framework.common.objects.Uid;
@@ -38,9 +43,11 @@ import org.identityconnectors.framework.spi.operations.UpdateAttributeValuesOp;
 import org.identityconnectors.framework.spi.operations.UpdateOp;
 
 import com.rsa.authmgr.admin.ondemandmgt.data.OnDemandAuthenticatorDTO;
+import com.rsa.authmgr.common.AdminResource;
 import com.rsa.authmgr.common.ondemandmgt.PinIndicator;
 import com.rsa.authmgr.admin.ondemandmgt.EnableOnDemandForPrincipalCommand;
 import com.rsa.admin.SearchPrincipalsCommand;
+import com.rsa.admin.data.AuthenticatorDTO;
 import com.rsa.admin.data.PrincipalDTO;
 import com.rsa.authmgr.admin.ondemandmgt.DisableOnDemandForPrincipalCommand;
 
@@ -84,7 +91,7 @@ public class RSAConnConnector implements Connector,
     @Override
     public void init(final Configuration configuration) {
         this.configuration = (RSAConnConfiguration) configuration;
-        this.connection = new RSAConnConnection(this.configuration);
+//        this.connection = new RSAConnConnection(this.configuration);
         logger.ok("Connector {0} successfully inited", getClass().getName());
     }
 
@@ -103,7 +110,8 @@ public class RSAConnConnector implements Connector,
             final Set<Attribute> createAttributes,
             final OperationOptions options) {
     	
-
+    	logger.info("CREATE METHOD");
+    	
         return new Uid(UUID.randomUUID().toString());
     }
 
@@ -113,9 +121,22 @@ public class RSAConnConnector implements Connector,
             final Uid uid,
             final Set<Attribute> replaceAttributes,
             final OperationOptions options) {
+    	logger.info("UPDATE METHOD");
+    	
 //    	1) Najít uživatele
-//    	2) Povolit On-demand authentication
-//		3) Nastavit pin 1234
+//    	final RSAConnUtils utils = new RSAConnUtils(this.getConnection());
+    	
+//    	2) Povolit On-demand authentication a nastavit PIN
+    	logger.info("Uid name", uid.getName());
+    	logger.info("Uid value", uid.getUidValue());
+    	try {
+    		
+//			utils.enableOnDemandAuthentication(utils.lookUpUser(uid.getName()));
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+    	
 
         return uid;
     }
@@ -168,11 +189,59 @@ public class RSAConnConnector implements Connector,
 
     @Override
     public Schema schema() {
-        return new Schema(
-                Collections.<ObjectClassInfo>emptySet(),
-                Collections.<OperationOptionInfo>emptySet(),
-                Collections.<Class<? extends APIOperation>, Set<ObjectClassInfo>>emptyMap(),
-                Collections.<Class<? extends APIOperation>, Set<OperationOptionInfo>>emptyMap());
+    	logger.info("Building Schema configuration...");
+    	// Create Schema
+    	SchemaBuilder schemaBuilder = new SchemaBuilder(getClass());
+    	Set<AttributeInfo> attributes = new HashSet<AttributeInfo>();
+    	
+    	//USER Objects
+    	logger.info("USER attributes...");
+    	// Mandatory Attribute NAME
+    	AttributeInfoBuilder nmeBuilder = new AttributeInfoBuilder();
+    	nmeBuilder.setCreateable(true);
+    	nmeBuilder.setUpdateable(true);
+    	nmeBuilder.setName(Name.NAME);
+    	attributes.add(nmeBuilder.build());
+    	// Mandatory Attribute UID
+    	AttributeInfoBuilder uidBuilder = new AttributeInfoBuilder();
+    	uidBuilder.setCreateable(true);
+    	uidBuilder.setUpdateable(true);
+    	uidBuilder.setName(Uid.NAME);
+    	attributes.add(uidBuilder.build());
+    	
+    	//Add all RSA User Principal attributes
+//    	attributes.add(AttributeInfoBuilder.build(OnDemandAuthenticatorDTO));
+    	
+    	attributes.add(AttributeInfoBuilder.build("PIN"));
+    	attributes.add(AttributeInfoBuilder.build("ENABLED"));
+    	
+    	attributes.add(AttributeInfoBuilder.build(PrincipalDTO.EMAIL));
+    	attributes.add(AttributeInfoBuilder.build(PrincipalDTO.FIRST_NAME));
+    	attributes.add(AttributeInfoBuilder.build(PrincipalDTO.LAST_NAME));
+    	attributes.add(AttributeInfoBuilder.build(PrincipalDTO.MIDDLE_NAME));
+    	attributes.add(AttributeInfoBuilder.build(PrincipalDTO.CERTDN));
+    	attributes.add(AttributeInfoBuilder.build(PrincipalDTO.DESCRIPTION));
+    	attributes.add(AttributeInfoBuilder.build(PrincipalDTO.ADMINISTRATOR_FLAG));
+    	attributes.add(AttributeInfoBuilder.build(PrincipalDTO.EXPIRATION_DATE));
+    	attributes.add(AttributeInfoBuilder.build(PrincipalDTO.IMPERSONATABLE_FLAG));
+    	attributes.add(AttributeInfoBuilder.build(PrincipalDTO.IMPERSONATOR_FLAG));
+    	attributes.add(AttributeInfoBuilder.build(PrincipalDTO.LAST_UPDATED_BY));
+    	attributes.add(AttributeInfoBuilder.build(PrincipalDTO.LAST_UPDATED_ON));
+    	attributes.add(AttributeInfoBuilder.build(PrincipalDTO.LOCKOUT_FLAG));
+    	attributes.add(AttributeInfoBuilder.build(PrincipalDTO.START_DATE));
+    	attributes.add(AttributeInfoBuilder.build(AdminResource.DEFAULTSHELL));
+    	
+    	// Build Schema
+        schemaBuilder.defineObjectClass(ObjectClass.ACCOUNT_NAME, attributes);
+        
+        return schemaBuilder.build();
+        
+//    	return new Schema(
+//                Collections.<ObjectClassInfo>emptySet(),
+//                Collections.<OperationOptionInfo>emptySet(),
+//                Collections.<Class<? extends APIOperation>, Set<ObjectClassInfo>>emptyMap(),
+//                Collections.<Class<? extends APIOperation>, Set<OperationOptionInfo>>emptyMap());
+        
     }
 
     @Override
@@ -191,7 +260,7 @@ public class RSAConnConnector implements Connector,
     @Override
     public void test() {
         logger.info("Performing Connector Test");
-        this.connection.test();
+//        this.connection.test();
         String defCommandTgt = null;
         defCommandTgt = CommandTargetPolicy.getDefaultCommandTarget().toString();
         logger.info("Using default command target for this thread: {0}",defCommandTgt);

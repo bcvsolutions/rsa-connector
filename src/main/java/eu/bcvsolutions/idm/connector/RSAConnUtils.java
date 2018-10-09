@@ -63,22 +63,21 @@ public class RSAConnUtils {
         return cmd.getPrincipals()[0];
     }
     
-    public void enableOnDemandAuthentication(String userId) {
-    	ClientSession ses = connection.newCmdClientSession();
+    public void enableOnDemandAuthentication(PrincipalDTO user) {
 			try {
-				PrincipalDTO user = lookUpUser(userId);
 				OnDemandAuthenticatorDTO authenticator = new OnDemandAuthenticatorDTO();
 				authenticator.setPrincipalGuid(user.getGuid());
 				authenticator.setPinType(PinIndicator.SET_PERM_PIN);
 				authenticator.setPin("1234");
 				authenticator.setOnDemandEnabledOn(null);
 				EnableOnDemandForPrincipalCommand cmd = new EnableOnDemandForPrincipalCommand(authenticator); 
+				ClientSession ses = connection.newCmdClientSession();
 				cmd.execute();
+				connection.sessionLogout(ses);
 				logger.info("ODA ENABLED!");
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
-		connection.sessionLogout(ses);
     }
     
     public void disableOnDemandAuthentication(String userId) {

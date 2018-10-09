@@ -123,8 +123,7 @@ public class RSAConnConnection {
             final RSAConnUtils utils = new RSAConnUtils(this);
             
             try {
-//				PrincipalDTO user = utils.lookUpUser("vkotynek");
-				utils.enableOnDemandAuthentication("vkotynek");
+				utils.enableOnDemandAuthentication(utils.lookUpUser("vkotynek"));
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -182,17 +181,11 @@ public class RSAConnConnection {
     	final String username = configuration.getUsername();
     	final String password = configuration.getStringPassword();
     	
-		try {
 			Connection conn = ConnectionFactory.getConnection("CommandAPIConnection");
 			logger.info("Connection factory initialized!");
-			this.RSAsession = conn.connect(username, password);
-			logger.info("Username and password OK.");
             // make all commands execute using this target automatically
 			// CommandTargetPolicy.setDefaultCommandTarget(RSAsession);
 //			logger.info("Connection succeeded: {0}", this.RSAsession.getSessionId());
-		} catch (CommandException e) {
-			throw new ConnectionFailedException(e);
-		}
         
         try {
             // as test, query self to see if there is proper response
@@ -206,8 +199,8 @@ public class RSAConnConnection {
             cmd.setSearchSubDomains(true);
             
             ClientSession ses = this.newSession();
-                cmd.execute(ses);
-                this.sessionLogout(ses);
+            cmd.execute(ses);
+            this.sessionLogout(ses);
             
             logger.info("Connection Test Successful");
         } catch (Exception e) {
@@ -252,7 +245,7 @@ public class RSAConnConnection {
      * 
      * @return a ClientSession.
      */
-    public ClientSession newCmdClientSession() {
+	public ClientSession newCmdClientSession() {
     	ClientSession newSession;
     	String username = configuration.getCmdclientUser();
     	String password = configuration.getCmdclientPassword();
