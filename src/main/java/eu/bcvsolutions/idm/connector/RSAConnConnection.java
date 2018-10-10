@@ -120,13 +120,13 @@ public class RSAConnConnection {
             }
             idSource = idSources[sourceNum];
             logger.info("Found RSA ID Source: " + idSource.getName());
-            final RSAConnUtils utils = new RSAConnUtils(this);
             
-            try {
-				utils.enableOnDemandAuthentication(utils.lookUpUser("vkotynek"));
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
+//            final RSAConnUtils utils = new RSAConnUtils(this);
+//            try {
+//				utils.enableOnDemandAuthentication(utils.lookUpUser("vkotynek"));
+//			} catch (Exception e) {
+//				e.printStackTrace();
+//			}
         }
 
         

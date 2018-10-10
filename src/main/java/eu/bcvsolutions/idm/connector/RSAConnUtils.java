@@ -36,7 +36,7 @@ public class RSAConnUtils {
      * @throws Exception
      */
     public PrincipalDTO lookUpUser(String userId) throws Exception {
-    	logger.info("searching for lodin.. " + userId);
+    	logger.info("searching for login.. " + userId);
         SearchPrincipalsCommand cmd = new SearchPrincipalsCommand();
 
         // create a filter with the login UID equal condition

@@ -1,25 +1,21 @@
 package eu.bcvsolutions.idm.connector;
 
-import com.rsa.command.ClientSession;
 import com.rsa.command.CommandTargetPolicy;
-import com.rsa.common.search.Filter;
 
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 import org.identityconnectors.common.logging.Log;
 import org.identityconnectors.common.security.GuardedString;
-import org.identityconnectors.framework.api.operations.APIOperation;
 import org.identityconnectors.framework.api.operations.ResolveUsernameApiOp;
-import org.identityconnectors.framework.common.exceptions.UnknownUidException;
+import org.identityconnectors.framework.common.exceptions.ConnectorException;
 import org.identityconnectors.framework.common.objects.Attribute;
+import org.identityconnectors.framework.common.objects.AttributeBuilder;
 import org.identityconnectors.framework.common.objects.AttributeInfo;
 import org.identityconnectors.framework.common.objects.AttributeInfoBuilder;
+import org.identityconnectors.framework.common.objects.ConnectorObjectBuilder;
 import org.identityconnectors.framework.common.objects.Name;
 import org.identityconnectors.framework.common.objects.ObjectClass;
-import org.identityconnectors.framework.common.objects.ObjectClassInfo;
-import org.identityconnectors.framework.common.objects.OperationOptionInfo;
 import org.identityconnectors.framework.common.objects.OperationOptions;
 import org.identityconnectors.framework.common.objects.ResultsHandler;
 import org.identityconnectors.framework.common.objects.Schema;
@@ -28,6 +24,7 @@ import org.identityconnectors.framework.common.objects.SyncResultsHandler;
 import org.identityconnectors.framework.common.objects.SyncToken;
 import org.identityconnectors.framework.common.objects.Uid;
 import org.identityconnectors.framework.common.objects.filter.AbstractFilterTranslator;
+import org.identityconnectors.framework.common.objects.filter.EqualsFilter;
 import org.identityconnectors.framework.common.objects.filter.FilterTranslator;
 import org.identityconnectors.framework.spi.Configuration;
 import org.identityconnectors.framework.spi.Connector;
@@ -42,14 +39,9 @@ import org.identityconnectors.framework.spi.operations.TestOp;
 import org.identityconnectors.framework.spi.operations.UpdateAttributeValuesOp;
 import org.identityconnectors.framework.spi.operations.UpdateOp;
 
-import com.rsa.authmgr.admin.ondemandmgt.data.OnDemandAuthenticatorDTO;
 import com.rsa.authmgr.common.AdminResource;
-import com.rsa.authmgr.common.ondemandmgt.PinIndicator;
-import com.rsa.authmgr.admin.ondemandmgt.EnableOnDemandForPrincipalCommand;
-import com.rsa.admin.SearchPrincipalsCommand;
-import com.rsa.admin.data.AuthenticatorDTO;
+import com.rsa.admin.data.AttributeDTO;
 import com.rsa.admin.data.PrincipalDTO;
-import com.rsa.authmgr.admin.ondemandmgt.DisableOnDemandForPrincipalCommand;
 
 /**
  * This sample connector provides (empty) implementations for all ConnId operations, but this is not mandatory: any
@@ -91,7 +83,7 @@ public class RSAConnConnector implements Connector,
     @Override
     public void init(final Configuration configuration) {
         this.configuration = (RSAConnConfiguration) configuration;
-//        this.connection = new RSAConnConnection(this.configuration);
+        this.connection = new RSAConnConnection(this.configuration);
         logger.ok("Connector {0} successfully inited", getClass().getName());
     }
 
@@ -281,6 +273,18 @@ public class RSAConnConnector implements Connector,
             final OperationOptions options) {
 
         return new AbstractFilterTranslator<RSAConnFilter>() {
+
+			@Override
+			protected RSAConnFilter createEqualsExpression(EqualsFilter filter, boolean not) {
+				logger.info("CREATE EQUALS EXPRESSION");
+				RSAConnFilter result = new RSAConnFilter();
+				result.setAttr(filter.getName());
+				// TODO 
+				if (filter.getAttribute().getValue().size() > 0) {
+					result.setValue(filter.getAttribute().getValue().get(0));
+				}
+				return result;
+			}
         };
     }
 
@@ -290,6 +294,32 @@ public class RSAConnConnector implements Connector,
             final RSAConnFilter query,
             final ResultsHandler handler,
             final OperationOptions options) {
-
+    	logger.info("EXECUTE QUERY");
+    	RSAConnUtils utils = new RSAConnUtils(connection);
+    	if(query.getAttr().equals(Uid.NAME)) {
+    		PrincipalDTO user;
+			try {
+				user = utils.lookUpUser(query.getValue().toString());
+			} catch (Exception e) {
+				throw new ConnectorException(e);
+			}
+    		ConnectorObjectBuilder builder = new ConnectorObjectBuilder();
+    		user.getAttributes();
+    		for (AttributeDTO attr : user.getAttributes()) {
+    			builder.addAttribute(convertAttribute(attr));
+    			logger.info("adding attribute: " + attr.getName());
+    		}
+    		builder.setUid(user.getUserID());
+    		builder.setName(user.getUserID());
+    		handler.handle(builder.build());
+    	}
     }
+
+	private Attribute convertAttribute(AttributeDTO attr) {
+		AttributeBuilder builder = new AttributeBuilder();
+		
+		builder.setName(attr.getName());
+		builder.addValue(attr.getValues());
+		return builder.build();
+	}
 }
