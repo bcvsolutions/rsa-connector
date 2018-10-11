@@ -26,7 +26,6 @@ import com.rsa.common.search.Filter;
  * @author Petr Hanak
  * 
  */
-
 public class RSAConnConnection {
 	
 	   /**
@@ -50,7 +49,7 @@ public class RSAConnConnection {
      */
     private static final Log logger = Log.getLog(RSAConnConnection.class);
     
-    // Connection init    
+    // Connection init
 	public RSAConnConnection(RSAConnConfiguration configuration) {
 		this.configuration = configuration;
 		this.RSAsession = newSession();
@@ -120,16 +119,7 @@ public class RSAConnConnection {
             }
             idSource = idSources[sourceNum];
             logger.info("Found RSA ID Source: " + idSource.getName());
-            
-//            final RSAConnUtils utils = new RSAConnUtils(this);
-//            try {
-//				utils.enableOnDemandAuthentication(utils.lookUpUser("vkotynek"));
-//			} catch (Exception e) {
-//				e.printStackTrace();
-//			}
         }
-
-        
 	}
 	
     /**

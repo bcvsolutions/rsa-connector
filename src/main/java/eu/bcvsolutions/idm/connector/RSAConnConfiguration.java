@@ -19,6 +19,9 @@ public class RSAConnConfiguration extends AbstractConfiguration {
     public static final String CONFIG_PROPERTIES_FILE = "config.properties";
     public static final String DATE_FORMAT = "yyyy/MM/dd";
     public static final Integer SEARCH_LIMIT_DEFAULT = 100000;
+    public static final String ENABLED = "ENABLED";
+    public static final String PIN = "PIN";
+    public static final String PHONE = "PHONE";
     
     // Configuration    
     private String username = "";

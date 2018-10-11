@@ -63,12 +63,12 @@ public class RSAConnUtils {
         return cmd.getPrincipals()[0];
     }
     
-    public void enableOnDemandAuthentication(PrincipalDTO user) {
+    public void enableOnDemandAuthentication(PrincipalDTO user, String pin) {
 			try {
 				OnDemandAuthenticatorDTO authenticator = new OnDemandAuthenticatorDTO();
 				authenticator.setPrincipalGuid(user.getGuid());
 				authenticator.setPinType(PinIndicator.SET_PERM_PIN);
-				authenticator.setPin("1234");
+				authenticator.setPin(pin);
 				authenticator.setOnDemandEnabledOn(null);
 				EnableOnDemandForPrincipalCommand cmd = new EnableOnDemandForPrincipalCommand(authenticator); 
 				ClientSession ses = connection.newCmdClientSession();
@@ -80,11 +80,12 @@ public class RSAConnUtils {
 			}
     }
     
-    public void disableOnDemandAuthentication(String userId) {
+    public void disableOnDemandAuthentication(PrincipalDTO user) {
 		try {
-			PrincipalDTO user = lookUpUser(userId);
-			DisableOnDemandForPrincipalCommand cmd = new DisableOnDemandForPrincipalCommand(userId);
+			ClientSession ses = connection.newCmdClientSession();
+			DisableOnDemandForPrincipalCommand cmd = new DisableOnDemandForPrincipalCommand(user.getGuid());
 			cmd.execute();
+			connection.sessionLogout(ses);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
