@@ -24,51 +24,14 @@ public class RSAConnConfiguration extends AbstractConfiguration {
     public static final String PHONE = "PHONE";
     
     // Configuration    
+    private String SecurityDomain = null;
+    private String identitySource = null;
     private String username = "";
     private GuardedString password;
     private String stringPassword;
-    /**
-     * The RSA Security Domain to use with this Connector instance
-     */
-    private String SecurityDomain = null;
-    /** 
-     * User ID for process-level Authentication.
-     */ 
     private String cmdClientUser = null;
     private String cmdClientPassword = null;
     
-    private String identitySource = null;
-    
-    @ConfigurationProperty(order = 1, displayMessageKey = "CmdclientUser.display",
-            helpMessageKey = "CmdclientUser.help",
-            required = false, confidential = false)
-    public String getCmdclientUser() {
-        return cmdClientUser;
-    }
-    public void setCmdclientUser(String CmdclientUser) {
-        this.cmdClientUser = CmdclientUser;
-    }
-    
-    @ConfigurationProperty(order = 1, displayMessageKey = "CmdclientPassword.display",
-    		helpMessageKey = "CmdclientPassword.help",
-    		required = false, confidential = false)
-    public String getCmdclientPassword() {
-    	return cmdClientPassword;
-    }
-    public void setCmdclientPassword(String CmdclientUser) {
-    	this.cmdClientPassword = CmdclientUser;
-    }
-    
-    @ConfigurationProperty(order = 1, displayMessageKey = "IdentitySource.display",
-    helpMessageKey = "IdentitySource.help",
-    required = false, confidential = false)
-	public String getIdentitySource() {
-		return identitySource;
-	}
-	public void setIdentitySource(String identitySource) {
-		this.identitySource = identitySource;
-	}
-	
 	@ConfigurationProperty(order = 1, displayMessageKey = "SecurityDomain.display",
 			helpMessageKey = "SecurityDomain.help",
 			required = false, confidential = false)
@@ -78,35 +41,66 @@ public class RSAConnConfiguration extends AbstractConfiguration {
 	public void setSecurityDomain(String SecurityDomain) {
 		this.SecurityDomain = SecurityDomain;
 	}
+	
+    @ConfigurationProperty(order = 2, displayMessageKey = "IdentitySource.display",
+    		helpMessageKey = "IdentitySource.help",
+    		required = false, confidential = false)
+	public String getIdentitySource() {
+		return identitySource;
+	}
+	public void setIdentitySource(String identitySource) {
+		this.identitySource = identitySource;
+	}
     
     @ConfigurationProperty(displayMessageKey = "username.display",
-    		helpMessageKey = "username.help", order = 2)
+    		helpMessageKey = "username.help", order = 3,
+    		required = false, confidential = false)
     public String getUsername() {
     	return username;
     }
-    
     public void setUsername(String username) {
     	this.username = username;
     }
     
     @ConfigurationProperty(displayMessageKey = "password.display",
-            helpMessageKey = "password.help", order = 3)
+            helpMessageKey = "password.help", order = 4,
+            required = false, confidential = true)
     public GuardedString getPassword() {
         return password;
     }
-
     public void setPassword(GuardedString password) {
         this.password = password;
     }
     
     @ConfigurationProperty(displayMessageKey = "strpassword.display",
-    		helpMessageKey = "strpassword.help", order = 4)
+    		helpMessageKey = "strpassword.help", order = 5,
+    		required = false, confidential = false)
     public String getStringPassword() {
     	return stringPassword;
     }
-    
     public void setStringPassword(String password) {
     	this.stringPassword = password;
+    }
+    
+    
+    @ConfigurationProperty(order = 6, displayMessageKey = "CmdclientUser.display",
+            helpMessageKey = "CmdclientUser.help",
+            required = false, confidential = false)
+    public String getCmdclientUser() {
+        return cmdClientUser;
+    }
+    public void setCmdclientUser(String CmdclientUser) {
+        this.cmdClientUser = CmdclientUser;
+    }
+    
+    @ConfigurationProperty(order = 7, displayMessageKey = "CmdclientPassword.display",
+    		helpMessageKey = "CmdclientPassword.help",
+    		required = false, confidential = false)
+    public String getCmdclientPassword() {
+    	return cmdClientPassword;
+    }
+    public void setCmdclientPassword(String CmdclientUser) {
+    	this.cmdClientPassword = CmdclientUser;
     }
 
     @Override

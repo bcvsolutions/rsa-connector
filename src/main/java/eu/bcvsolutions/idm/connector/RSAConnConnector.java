@@ -5,6 +5,9 @@ import com.rsa.command.CommandTargetPolicy;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+
+import javax.naming.NamingException;
+
 import org.identityconnectors.common.logging.Log;
 import org.identityconnectors.common.security.GuardedString;
 import org.identityconnectors.framework.api.operations.ResolveUsernameApiOp;
@@ -60,7 +63,7 @@ public class RSAConnConnector implements Connector,
 
     private RSAConnConfiguration configuration;
 	
-	   /**
+	/**
      * Place holder for the Connection created in the init method.
      */
     private RSAConnConnection connection;
@@ -82,7 +85,11 @@ public class RSAConnConnector implements Connector,
     @Override
     public void init(final Configuration configuration) {
         this.configuration = (RSAConnConfiguration) configuration;
-        this.connection = new RSAConnConnection(this.configuration);
+        try {
+			this.connection = new RSAConnConnection(this.configuration);
+		} catch (NamingException e) {
+			e.printStackTrace();
+		}
         logger.ok("Connector {0} successfully inited", getClass().getName());
     }
 

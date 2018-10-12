@@ -1,7 +1,11 @@
 package eu.bcvsolutions.idm.connector;
 
+import java.util.Properties;
+
+import javax.naming.Context;
+import javax.naming.NamingException;
+
 import org.identityconnectors.common.logging.Log;
-import org.identityconnectors.framework.common.exceptions.ConnectionFailedException;
 
 import com.rsa.admin.SearchPrincipalsCommand;
 import com.rsa.admin.SearchRealmsCommand;
@@ -14,6 +18,7 @@ import com.rsa.command.CommandException;
 import com.rsa.command.CommandTargetPolicy;
 import com.rsa.command.Connection;
 import com.rsa.command.ConnectionFactory;
+import com.rsa.command.EJBRemoteTarget;
 import com.rsa.command.InvalidSessionException;
 import com.rsa.command.exception.DataNotFoundException;
 import com.rsa.command.exception.InsufficientPrivilegeException;
@@ -28,10 +33,14 @@ import com.rsa.common.search.Filter;
  */
 public class RSAConnConnection {
 	
-	   /**
+	/**
      * An instance of the RSA Configuration
      */
     private RSAConnConfiguration configuration;
+    /**
+	 * Place holder for the Connection created in the init method.
+	 */
+	private Connection conn;
     /**
      * An instance of a Connection to the RSA Server
      */
@@ -50,12 +59,13 @@ public class RSAConnConnection {
     private static final Log logger = Log.getLog(RSAConnConnection.class);
     
     // Connection init
-	public RSAConnConnection(RSAConnConfiguration configuration) {
+	public RSAConnConnection(RSAConnConfiguration configuration) throws NamingException {
 		this.configuration = configuration;
 		this.RSAsession = newSession();
         
-        // make all commands execute using this target automatically
+        // Make all commands execute using this target automatically
         CommandTargetPolicy.setDefaultCommandTarget(this.RSAsession);
+        // CommandTargetPolicy.setDefaultCommandTarget(this.conn.getTarget());
         
         logger.info("Using session with ID: {0}.", this.RSAsession.getSessionId());
         
@@ -167,15 +177,9 @@ public class RSAConnConnection {
         logger.info("Connection domain name {0}:", this.domain.getName());
         logger.info("Connection ID Source {0}:", this.idSource);
         
-//    	final GuardedString password = configuration.getPassword();
-    	final String username = configuration.getUsername();
-    	final String password = configuration.getStringPassword();
-    	
-			Connection conn = ConnectionFactory.getConnection("CommandAPIConnection");
-			logger.info("Connection factory initialized!");
             // make all commands execute using this target automatically
 			// CommandTargetPolicy.setDefaultCommandTarget(RSAsession);
-//			logger.info("Connection succeeded: {0}", this.RSAsession.getSessionId());
+        	// logger.info("Connection succeeded: {0}", this.RSAsession.getSessionId());
         
         try {
             // as test, query self to see if there is proper response
@@ -189,6 +193,7 @@ public class RSAConnConnection {
             cmd.setSearchSubDomains(true);
             
             ClientSession ses = this.newSession();
+//            ClientSession ses = this.newCmdClientSession();
             cmd.execute(ses);
             this.sessionLogout(ses);
             
@@ -204,28 +209,32 @@ public class RSAConnConnection {
      * This may be preferable to use with some commands
      * 
      * @return a ClientSession.
+     * @throws NamingException 
      */
-    public ClientSession newSession() {
+    public ClientSession newSession() throws NamingException {
+    	logger.info("Creating a new Session");
     	ClientSession newSession;
         String username = configuration.getUsername();
-    	String password = configuration.getStringPassword();
-        logger.info("Creating a new Session");
+        String password = RSAConnUtils.getPlainPassword(configuration.getPassword());
+//    	String password = configuration.getStringPassword();
+//    	final GuardedString password = configuration.getPassword();
         
         // establish a connected session with given credentials
-        Connection conn = ConnectionFactory.getConnection("CommandAPIConnection"); // "CommandAPIConnection"  // createConfigProperties()
-        logger.info ("Connection instantiated. Attempting to login...");
+        this.conn = ConnectionFactory.getConnection("CommandAPIConnection"); // "CommandAPIConnection"  // createConfigProperties()
         
-//        String PlainPwd = RSAAuthenticationManager8Utils.getPlainPassword(this.configuration.getUserMgrPwd());
+        logger.info ("Connection instantiated. Attempting to login...");
+        logger.info("Connection target: " + this.conn.getTarget());
         
         try {
-            newSession = conn.connect(username, password);
+            newSession = this.conn.connect(username, password);
             logger.info("Connection succeeded: {0}", newSession.getSessionId());
         } catch (CommandException e) {
             logger.error("Failed to connect to the RSA server. Error: " + e.getMessage() + " key: " +e.getMessageKey() + " cause: " + e.getCause() 
                          + "\n User: " + username + " - Pwd: " + password);
             throw new org.identityconnectors.framework.common.exceptions.ConnectionFailedException(e);
         }
-
+        
+        logger.info("NewSession DefaultCommandTarget: " + CommandTargetPolicy.getDefaultCommandTarget());
         return newSession;
     }
     
@@ -234,8 +243,9 @@ public class RSAConnConnection {
      * This may be preferable to use with some commands
      * 
      * @return a ClientSession.
+     * @throws NamingException 
      */
-	public ClientSession newCmdClientSession() {
+	public ClientSession newCmdClientSession() throws NamingException {
     	ClientSession newSession;
     	String username = configuration.getCmdclientUser();
     	String password = configuration.getCmdclientPassword();
@@ -243,9 +253,7 @@ public class RSAConnConnection {
     	
     	// establish a connected session with given credentials
     	Connection conn = ConnectionFactory.getConnection("CommandAPIConnection"); // "CommandAPIConnection"  // createConfigProperties()
-    	logger.info ("Connection instantiated. Attempting to login...");
-    	
-//        String PlainPwd = RSAAuthenticationManager8Utils.getPlainPassword(this.configuration.getUserMgrPwd());
+    	logger.info("Connection instantiated. Attempting to login...");
     	
     	try {
     		newSession = conn.connect(username, password);
@@ -255,7 +263,6 @@ public class RSAConnConnection {
     		+ "\n User: " + username + " - Pwd: " + password);
     		throw new org.identityconnectors.framework.common.exceptions.ConnectionFailedException(e);
     	}
-    	
     	return newSession;
     }
 	
