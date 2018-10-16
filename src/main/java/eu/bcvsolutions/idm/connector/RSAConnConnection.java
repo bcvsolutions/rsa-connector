@@ -2,13 +2,14 @@ package eu.bcvsolutions.idm.connector;
 
 import java.util.Properties;
 
-import javax.naming.Context;
 import javax.naming.NamingException;
 
 import org.identityconnectors.common.logging.Log;
 
+import com.rsa.admin.AddAdminRoleCommand;
 import com.rsa.admin.SearchPrincipalsCommand;
 import com.rsa.admin.SearchRealmsCommand;
+import com.rsa.admin.data.AdminRoleDTO;
 import com.rsa.admin.data.IdentitySourceDTO;
 import com.rsa.admin.data.PrincipalDTO;
 import com.rsa.admin.data.RealmDTO;
@@ -18,11 +19,13 @@ import com.rsa.command.CommandException;
 import com.rsa.command.CommandTargetPolicy;
 import com.rsa.command.Connection;
 import com.rsa.command.ConnectionFactory;
-import com.rsa.command.EJBRemoteTarget;
+import com.rsa.command.HttpInvokerCommandTarget;
 import com.rsa.command.InvalidSessionException;
 import com.rsa.command.exception.DataNotFoundException;
+import com.rsa.command.exception.DuplicateDataException;
 import com.rsa.command.exception.InsufficientPrivilegeException;
 import com.rsa.command.exception.InvalidArgumentException;
+import com.rsa.common.SystemException;
 import com.rsa.common.search.Filter;
 
 /**
@@ -62,10 +65,10 @@ public class RSAConnConnection {
 	public RSAConnConnection(RSAConnConfiguration configuration) throws NamingException {
 		this.configuration = configuration;
 		this.RSAsession = newSession();
-        
+		
         // Make all commands execute using this target automatically
         CommandTargetPolicy.setDefaultCommandTarget(this.RSAsession);
-        // CommandTargetPolicy.setDefaultCommandTarget(this.conn.getTarget());
+        logger.info("command target after setting default: " + CommandTargetPolicy.getDefaultCommandTarget());
         
         logger.info("Using session with ID: {0}.", this.RSAsession.getSessionId());
         
@@ -88,7 +91,6 @@ public class RSAConnConnection {
 
         try {
             searchRealmCmd.execute(RSAsession);
-            this.sessionLogout(RSAsession);
         } catch (InsufficientPrivilegeException e) {
             logger.error("Insufficient Privileges to create Principal: " + e.getMessage() + " User ID: " + configuration.getCmdclientUser());
             throw new RuntimeException ("Insufficient Privileges to create Principal", e);
@@ -130,6 +132,8 @@ public class RSAConnConnection {
             idSource = idSources[sourceNum];
             logger.info("Found RSA ID Source: " + idSource.getName());
         }
+        
+        this.sessionLogout(RSAsession);
 	}
 	
     /**
@@ -216,8 +220,6 @@ public class RSAConnConnection {
     	ClientSession newSession;
         String username = configuration.getUsername();
         String password = RSAConnUtils.getPlainPassword(configuration.getPassword());
-//    	String password = configuration.getStringPassword();
-//    	final GuardedString password = configuration.getPassword();
         
         // establish a connected session with given credentials
         this.conn = ConnectionFactory.getConnection("CommandAPIConnection"); // "CommandAPIConnection"  // createConfigProperties()
@@ -263,6 +265,7 @@ public class RSAConnConnection {
     		+ "\n User: " + username + " - Pwd: " + password);
     		throw new org.identityconnectors.framework.common.exceptions.ConnectionFailedException(e);
     	}
+    	
     	return newSession;
     }
 	

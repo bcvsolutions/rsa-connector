@@ -141,14 +141,14 @@ public class RSAConnConnector implements Connector,
     	if (enabled && hasPhone) {
     		try {
     			// Find user DTO, allow On-demand authentication and set new PIN
-    			 utils.enableOnDemandAuthentication(utils.lookUpUser(uid.getUidValue()), pin);
+    			 utils.enableOnDemandAuthentication(RSAConnUtils.lookupUser(uid.getUidValue(), connection), pin, this.configuration);
     		} catch (Exception e) {
     			e.printStackTrace();
     		}
     	} else {
     		try {
     			// Disable On-demand authentication
-				utils.disableOnDemandAuthentication(utils.lookUpUser(uid.getUidValue()));
+				utils.disableOnDemandAuthentication(RSAConnUtils.lookupUser(uid.getUidValue(), connection));
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -185,7 +185,7 @@ public class RSAConnConnector implements Connector,
     	final RSAConnUtils utils = new RSAConnUtils(this.getConnection());
     	try {
 			// Disable On-demand authentication
-			utils.disableOnDemandAuthentication(utils.lookUpUser(uid.getUidValue()));
+			utils.disableOnDemandAuthentication(RSAConnUtils.lookupUser(uid.getUidValue(), connection));
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -308,7 +308,7 @@ public class RSAConnConnector implements Connector,
     	if(query.getAttr().equals(Uid.NAME)) {
     		PrincipalDTO user;
 			try {
-				user = utils.lookUpUser(query.getValue().toString());
+				user = RSAConnUtils.lookupUser(query.getValue().toString(), connection);
 			} catch (Exception e) {
 				throw new ConnectorException(e);
 			}
