@@ -170,13 +170,16 @@ public class RSAConnUtils {
 //			}
 	        
 			OnDemandAuthenticatorDTO authenticator = new OnDemandAuthenticatorDTO();
+			logger.info("enableOnDemandAuthentication SMTP");
 			authenticator.setPrincipalGuid(user.getGuid());
 			authenticator.setPinType(PinIndicator.SET_PERM_PIN);
 			authenticator.setPin(pin);
-//			authenticator.setOnDemandEnabledOn(null);
+//			authenticator.setSMSDestinationAddress("+420608947331@sms1.koop.cz");
+			authenticator.setSMTPAddress("+420608947331@sms1.koop.cz");
 			logger.info("enableOnDemandAuthentication DefaultCommandTarget: " + CommandTargetPolicy.getDefaultCommandTarget());
 			
-			EnableOnDemandForPrincipalCommand cmd = new EnableOnDemandForPrincipalCommand(authenticator); 
+			EnableOnDemandForPrincipalCommand cmd = new EnableOnDemandForPrincipalCommand();
+			cmd.setOnDemandAuthenticatorDTO(authenticator);
 			cmd.execute();
 			connection.sessionLogout(this.RSAsession);
 			logger.info("ODA ENABLED!");
