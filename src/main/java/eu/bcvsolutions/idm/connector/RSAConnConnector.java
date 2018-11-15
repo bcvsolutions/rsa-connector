@@ -66,7 +66,7 @@ public class RSAConnConnector implements Connector,
 	/**
      * Place holder for the Connection created in the init method.
      */
-    private RSAConnConnection connection;
+    private RSAConnConnection rsaConnection;
 
     /**
      * Gets the Connection context for this connector.
@@ -74,7 +74,7 @@ public class RSAConnConnector implements Connector,
      * @return The current RSA Connection
      */
     public RSAConnConnection getConnection() {
-        return connection;
+        return rsaConnection;
     }
 
     @Override
@@ -86,7 +86,7 @@ public class RSAConnConnector implements Connector,
     public void init(final Configuration configuration) {
         this.configuration = (RSAConnConfiguration) configuration;
         try {
-			this.connection = new RSAConnConnection(this.configuration);
+			this.rsaConnection = new RSAConnConnection(this.configuration);
 		} catch (NamingException e) {
 			e.printStackTrace();
 		}
@@ -95,9 +95,10 @@ public class RSAConnConnector implements Connector,
 
     @Override
     public void dispose() {
-        if (connection != null) {
-            connection.dispose();
-            connection = null;
+        if (this.rsaConnection != null) {
+        	logger.info("this.rsaconnection: " + this.rsaConnection);
+        	this.rsaConnection.sessionLogout();
+        	this.rsaConnection = null;
         }
         configuration = null;
     }
@@ -141,14 +142,14 @@ public class RSAConnConnector implements Connector,
     	if (enabled && hasPhone) {
     		try {
     			// Find user DTO, allow On-demand authentication and set new PIN
-    			 utils.enableOnDemandAuthentication(RSAConnUtils.lookupUser(uid.getUidValue(), connection), pin, this.configuration);
+    			 utils.enableOnDemandAuthentication(RSAConnUtils.lookupUser(uid.getUidValue(), rsaConnection), pin, this.configuration);
     		} catch (Exception e) {
     			e.printStackTrace();
     		}
     	} else {
     		try {
     			// Disable On-demand authentication
-				utils.disableOnDemandAuthentication(RSAConnUtils.lookupUser(uid.getUidValue(), connection));
+				utils.disableOnDemandAuthentication(RSAConnUtils.lookupUser(uid.getUidValue(), rsaConnection));
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -185,7 +186,7 @@ public class RSAConnConnector implements Connector,
     	final RSAConnUtils utils = new RSAConnUtils(this.getConnection());
     	try {
 			// Disable On-demand authentication
-			utils.disableOnDemandAuthentication(RSAConnUtils.lookupUser(uid.getUidValue(), connection));
+			utils.disableOnDemandAuthentication(RSAConnUtils.lookupUser(uid.getUidValue(), rsaConnection));
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -263,17 +264,12 @@ public class RSAConnConnector implements Connector,
     @Override
     public void test() {
         logger.info("Performing Connector Test");
-        this.connection.test();
-        String defCommandTgt = null;
-        defCommandTgt = CommandTargetPolicy.getDefaultCommandTarget().toString();
-        logger.info("Using default command target for this thread: {0}",defCommandTgt);
+        this.rsaConnection.test();
         
-        /*try {
-            this.lookupSecurityDomain(this.configuration.getSecurityDomain());
-        } catch (Exception ex) {
-            logger.error("Connection Test Failed: {0}", ex.getMessage());
-            throw new RuntimeException("Connection Test Failed", ex);
-        }*/
+//        String defCommandTgt = null;
+//        defCommandTgt = CommandTargetPolicy.getDefaultCommandTarget().toString();
+//        logger.info("Using default command target for this thread: {0}", defCommandTgt);
+
 	}
 
     @Override
@@ -304,11 +300,10 @@ public class RSAConnConnector implements Connector,
             final ResultsHandler handler,
             final OperationOptions options) {
     	logger.info("EXECUTE QUERY");
-    	RSAConnUtils utils = new RSAConnUtils(connection);
     	if(query.getAttr().equals(Uid.NAME)) {
     		PrincipalDTO user;
 			try {
-				user = RSAConnUtils.lookupUser(query.getValue().toString(), connection);
+				user = RSAConnUtils.lookupUser(query.getValue().toString(), rsaConnection);
 			} catch (Exception e) {
 				throw new ConnectorException(e);
 			}

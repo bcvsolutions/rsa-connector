@@ -1,13 +1,10 @@
 package eu.bcvsolutions.idm.connector;
 
-import java.util.Properties;
 
 import javax.naming.NamingException;
 
 import org.identityconnectors.common.logging.Log;
 
-import com.rsa.admin.AddAdminRoleCommand;
-import com.rsa.admin.SearchPrincipalsCommand;
 import com.rsa.admin.SearchRealmsCommand;
 import com.rsa.admin.data.AdminRoleDTO;
 import com.rsa.admin.data.IdentitySourceDTO;
@@ -19,13 +16,10 @@ import com.rsa.command.CommandException;
 import com.rsa.command.CommandTargetPolicy;
 import com.rsa.command.Connection;
 import com.rsa.command.ConnectionFactory;
-import com.rsa.command.HttpInvokerCommandTarget;
 import com.rsa.command.InvalidSessionException;
 import com.rsa.command.exception.DataNotFoundException;
-import com.rsa.command.exception.DuplicateDataException;
 import com.rsa.command.exception.InsufficientPrivilegeException;
 import com.rsa.command.exception.InvalidArgumentException;
-import com.rsa.common.SystemException;
 import com.rsa.common.search.Filter;
 
 /**
@@ -43,11 +37,11 @@ public class RSAConnConnection {
     /**
 	 * Place holder for the Connection created in the init method.
 	 */
-	private Connection conn;
+	private Connection connection;
     /**
      * An instance of a Connection to the RSA Server
      */
-    private ClientSession RSAsession;
+    private ClientSession rsaSession;
     /**
      * The RSA Security Domain
      */
@@ -64,13 +58,14 @@ public class RSAConnConnection {
     // Connection init
 	public RSAConnConnection(RSAConnConfiguration configuration) throws NamingException {
 		this.configuration = configuration;
-		this.RSAsession = newSession();
+		this.initConnection();
+		this.rsaSession = newSession();
 		
         // Make all commands execute using this target automatically
-        CommandTargetPolicy.setDefaultCommandTarget(this.RSAsession);
+        CommandTargetPolicy.setDefaultCommandTarget(this.rsaSession);
         logger.info("command target after setting default: " + CommandTargetPolicy.getDefaultCommandTarget());
         
-        logger.info("Using session with ID: {0}.", this.RSAsession.getSessionId());
+        logger.info("Using session with ID: {0}.", this.rsaSession.getSessionId());
         
         // Fetch the Security Domain DTO and search for the ID Source by querying the RSA Security realm
         // First determine whether the connector was instantiated with a specific Domain ID, else use
@@ -90,7 +85,7 @@ public class RSAConnConnection {
         logger.info("Searching for RSA SecurityDomain with filter: " + searchRealmCmd.getFilter().toString());
 
         try {
-            searchRealmCmd.execute(RSAsession);
+            searchRealmCmd.execute(rsaSession);
         } catch (InsufficientPrivilegeException e) {
             logger.error("Insufficient Privileges to create Principal: " + e.getMessage() + " User ID: " + configuration.getCmdclientUser());
             throw new RuntimeException ("Insufficient Privileges to create Principal", e);
@@ -133,7 +128,7 @@ public class RSAConnConnection {
             logger.info("Found RSA ID Source: " + idSource.getName());
         }
         
-        this.sessionLogout(RSAsession);
+//        this.sessionLogout();
 	}
 	
     /**
@@ -142,7 +137,7 @@ public class RSAConnConnection {
      * @return a RSA Session object.
      */
     public ClientSession getRSASession () {
-        return this.RSAsession;
+        return this.rsaSession;
     }
     /**
      * Gets the RSA ID Source for the current connection
@@ -159,25 +154,9 @@ public class RSAConnConnection {
     public SecurityDomainDTO getDomain () {
         return this.domain;
     }
-    
-    /**
-     * Release internal resources.
-     */
-    public void dispose() {
-        logger.info("Disposing Connection");
-        try {
-            this.RSAsession.logout();
-            logger.info("Successful Logout");
-        } catch (CommandException e) {
-            logger.info("Failed to Logout of the RSA server. Error: " + e.getMessage() + " key: " +e.getMessageKey() + " cause: " + e.getCause());
-        }
         
-        this.RSAsession = null;
-    }
-    
     public void test() {
         // establish a connected session with given credentials
-        logger.info("Connection Session ID {0}:", this.RSAsession.getSessionId());
         logger.info("Connection domain name {0}:", this.domain.getName());
         logger.info("Connection ID Source {0}:", this.idSource);
         
@@ -186,26 +165,25 @@ public class RSAConnConnection {
         	// logger.info("Connection succeeded: {0}", this.RSAsession.getSessionId());
         
         try {
-            // as test, query self to see if there is proper response
-            SearchPrincipalsCommand cmd = new SearchPrincipalsCommand();
-            cmd.setLimit(RSAConnConfiguration.SEARCH_LIMIT_DEFAULT);
-            cmd.setIdentitySourceGuid(getIdSource().getGuid());
-            logger.info("Identity Source: " + getIdSource().getName());
-            cmd.setSecurityDomainGuid(getDomain().getGuid());
-            cmd.setAttributeMask(new String[]{"CORE_ATTRIBUTES"});
-            cmd.setFilter(Filter.equal(PrincipalDTO.LOGINUID, configuration.getUsername()));
-            cmd.setSearchSubDomains(true);
-            
-            ClientSession ses = this.newSession();
-//            ClientSession ses = this.newCmdClientSession();
-            cmd.execute(ses);
-            this.sessionLogout(ses);
-            
+        	// as test, query self to see if there is proper response
+        	PrincipalDTO admin = RSAConnUtils.lookupUser(configuration.getUsername(), this);
+        	AdminRoleDTO[] adminRoles = RSAConnUtils.getPrincipalAdminRoles(admin, this); 
+        	if(adminRoles.length > 0) {
+        		for(AdminRoleDTO adminRole : adminRoles) {
+        			logger.info("admin role: " + adminRole.getName());
+        		}
+        	}
+        	
             logger.info("Connection Test Successful");
         } catch (Exception e) {
             logger.warn("Connection Test Failed");
             throw new IllegalStateException ("RSA Connection failed", e);
         }
+    }
+    
+    private void initConnection() {
+    	this.connection = ConnectionFactory.getConnection("CommandAPIConnection");
+    	logger.info("Connection instantiated.");
     }
     
     /**
@@ -222,16 +200,14 @@ public class RSAConnConnection {
         String password = RSAConnUtils.getPlainPassword(configuration.getPassword());
         
         // establish a connected session with given credentials
-        this.conn = ConnectionFactory.getConnection("CommandAPIConnection"); // "CommandAPIConnection"  // createConfigProperties()
-        
         logger.info ("Connection instantiated. Attempting to login...");
-        logger.info("Connection target: " + this.conn.getTarget());
+        logger.info("Connection target: " + this.connection.getTarget());
         
         try {
-            newSession = this.conn.connect(username, password);
+            newSession = this.connection.connect(username, password);
             logger.info("Connection succeeded: {0}", newSession.getSessionId());
         } catch (CommandException e) {
-            logger.error("Failed to connect to the RSA server. Error: " + e.getMessage() + " key: " +e.getMessageKey() + " cause: " + e.getCause() 
+            logger.error("Failed to connect to the RSA server. Error: " + e.getMessage() + " key: " + e.getMessageKey() + " cause: " + e.getCause() 
                          + "\n User: " + username + " - Pwd: " + password);
             throw new org.identityconnectors.framework.common.exceptions.ConnectionFailedException(e);
         }
@@ -248,17 +224,15 @@ public class RSAConnConnection {
      * @throws NamingException 
      */
 	public ClientSession newCmdClientSession() throws NamingException {
+		logger.info("Creating a new Session");
     	ClientSession newSession;
     	String username = configuration.getCmdclientUser();
     	String password = configuration.getCmdclientPassword();
-    	logger.info("Creating a new Session");
     	
     	// establish a connected session with given credentials
-    	Connection conn = ConnectionFactory.getConnection("CommandAPIConnection"); // "CommandAPIConnection"  // createConfigProperties()
-    	logger.info("Connection instantiated. Attempting to login...");
-    	
+    	logger.info("Attempting to login...");
     	try {
-    		newSession = conn.connect(username, password);
+    		newSession = this.connection.connect(username, password);
     		logger.info("Connection succeeded: {0}", newSession.getSessionId());
     	} catch (CommandException e) {
     		logger.error("Failed to connect to the RSA server. Error: " + e.getMessage() + " key: " +e.getMessageKey() + " cause: " + e.getCause() 
@@ -272,13 +246,28 @@ public class RSAConnConnection {
     /**
      * Session Logout
      */
-    public void sessionLogout(ClientSession session) {
-        logger.info("closing Connection ID: {0}", session.getSessionId());
+    protected void sessionLogout() {
+    	try {
+    		logger.info("closing Connection ID: {0}", this.rsaSession.getSessionId());
+    		this.rsaSession.logout();
+    		logger.info("Successful Logout");
+    	} catch (CommandException e) {
+    		logger.info("Failed to Logout of the RSA server. Error: " + e.getMessage() + " key: " +e.getMessageKey() + " cause: " + e.getCause());
+    	}
+    	this.rsaSession = null;
+    }
+    
+    /**
+     * Session Logout
+     */
+    protected void sessionLogout(ClientSession session) {
         try {
-            this.RSAsession.logout();
+        	logger.info("closing Connection ID: {0}", session.getSessionId());
+            session.logout();
             logger.info("Successful Logout");
         } catch (CommandException e) {
             logger.info("Failed to Logout of the RSA server. Error: " + e.getMessage() + " key: " +e.getMessageKey() + " cause: " + e.getCause());
         }
+        session = null;
     }
 }

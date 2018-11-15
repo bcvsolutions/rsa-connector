@@ -7,6 +7,7 @@ import org.identityconnectors.common.security.GuardedString;
 import org.identityconnectors.framework.common.exceptions.UnknownUidException;
 
 import com.rsa.admin.AddAdminRoleCommand;
+import com.rsa.admin.GetPrincipalAdminRolesCommand;
 import com.rsa.admin.SearchPrincipalsCommand;
 import com.rsa.admin.data.AdminRoleDTO;
 import com.rsa.admin.data.PrincipalDTO;
@@ -15,9 +16,11 @@ import com.rsa.authmgr.admin.ondemandmgt.DisableOnDemandForPrincipalCommand;
 import com.rsa.authmgr.admin.ondemandmgt.EnableOnDemandForPrincipalCommand;
 import com.rsa.authmgr.admin.ondemandmgt.data.OnDemandAuthenticatorDTO;
 import com.rsa.authmgr.common.ondemandmgt.PinIndicator;
+import com.rsa.authmgr.common.ondemandmgt.TransmissionMechanism;
 import com.rsa.command.ClientSession;
 import com.rsa.command.CommandException;
 import com.rsa.command.CommandTargetPolicy;
+import com.rsa.command.exception.DataNotFoundException;
 import com.rsa.command.exception.DuplicateDataException;
 import com.rsa.command.exception.InsufficientPrivilegeException;
 import com.rsa.command.exception.InvalidArgumentException;
@@ -78,29 +81,22 @@ public class RSAConnUtils {
      */
     public static PrincipalDTO lookupUser(String userId, RSAConnConnection connection) throws Exception {
     	logger.info("searching for login.. " + userId);
-        SearchPrincipalsCommand cmd = new SearchPrincipalsCommand();
+        SearchPrincipalsCommand searchPrincipals = new SearchPrincipalsCommand();
 
         // create a filter with the login UID equal condition
-        cmd.setFilter(Filter.equal(PrincipalDTO.LOGINUID, userId));
-        cmd.setSystemFilter(Filter.empty());
-        cmd.setLimit(1);
-        cmd.setIdentitySourceGuid(connection.getIdSource().getGuid());
-        cmd.setSecurityDomainGuid(connection.getDomain().getGuid());
-//        cmd.setGroupGuid(null);
-//        cmd.setOnlyRegistered(true);
-//        cmd.setSearchSubDomains(true);
-//        cmd.setAttributeMask(new String[]{"ALL_INTRINSIC_ATTRIBUTES", "CORE_ATTRIBUTES", "SYSTEM_ATTRIBUTES", "ALL_EXTENDED_ATTRIBUTES"}); //"ALL_ATTRIBUTES"
-        ClientSession ses = connection.newSession();
-        cmd.execute(ses);
-        connection.sessionLogout(ses);
+        searchPrincipals.setFilter(Filter.equal(PrincipalDTO.LOGINUID, userId));
+        searchPrincipals.setSystemFilter(Filter.empty());
+        searchPrincipals.setLimit(1);
+        searchPrincipals.setIdentitySourceGuid(connection.getIdSource().getGuid());
+        searchPrincipals.setSecurityDomainGuid(connection.getDomain().getGuid());
+        searchPrincipals.execute(connection.getRSASession());
 
-        if (cmd.getPrincipals().length < 1) {
+        if (searchPrincipals.getPrincipals().length < 1) {
             throw new UnknownUidException("Unable to find user " + userId + ".");
         } else {
-        	logger.info("Found User: " + cmd.getPrincipals()[0].getFirstName() + " " + cmd.getPrincipals()[0].getLastName());
+        	logger.info("Found User: " + searchPrincipals.getPrincipals()[0].getFirstName() + " " + searchPrincipals.getPrincipals()[0].getLastName());
         }
-
-        return cmd.getPrincipals()[0];
+        return searchPrincipals.getPrincipals()[0];
     }
     
     public static PrincipalDTO createPrincipalUser(RSAConnConnection connection, RSAConnConfiguration configuration) {
@@ -142,45 +138,19 @@ public class RSAConnUtils {
 //			please Utilize AdminRoleDTO.setIdentitySourceScope when creating a role via the AddAdminRoleCommand.
     	
 		try {
-	        // Set super admin permission to default command target        
-//	        String[] identitySourceScope = {"DC=testkoop,DC=int"};
-//	        String[] securityDomainScope = {connection.getDomain().SEARCH_SCOPE_ONE_LEVEL};
-//	        AdminRoleDTO adminRole = new AdminRoleDTO();
-//	        adminRole.setSuperAdminRole(true);
-//	        adminRole.setName("ConnectorAdminRole");
-//	        adminRole.setSecurityDomainGuid(connection.getDomain().getGuid());
-//	        adminRole.setDomainScope(securityDomainScope);
-//	        adminRole.setIdentitySourceScope(identitySourceScope);
-//	        logger.info("ADMIN ROLE PERMISSIONS: " + adminRole.getPermissions());;
-//	        
-//	        AddAdminRoleCommand addAdminRoleCommand = new AddAdminRoleCommand();
-//	        addAdminRoleCommand.setAdminRole(adminRole);
-//	        try {
-//				addAdminRoleCommand.execute(this.RSAsession);
-//			} catch (DuplicateDataException e1) {
-//				e1.printStackTrace();
-//			} catch (InsufficientPrivilegeException e1) {
-//				e1.printStackTrace();
-//			} catch (InvalidArgumentException e1) {
-//				e1.printStackTrace();
-//			} catch (CommandException e1) {
-//				e1.printStackTrace();
-//			} catch (SystemException e1) {
-//				e1.printStackTrace();
-//			}
-	        
 			OnDemandAuthenticatorDTO authenticator = new OnDemandAuthenticatorDTO();
 			logger.info("enableOnDemandAuthentication SMTP");
 			authenticator.setPrincipalGuid(user.getGuid());
 			authenticator.setPinType(PinIndicator.SET_PERM_PIN);
 			authenticator.setPin(pin);
+			authenticator.setDeliveryMethod(TransmissionMechanism.SMTP);
 //			authenticator.setSMSDestinationAddress("+420608947331@sms1.koop.cz");
 			authenticator.setSMTPAddress("+420608947331@sms1.koop.cz");
 			logger.info("enableOnDemandAuthentication DefaultCommandTarget: " + CommandTargetPolicy.getDefaultCommandTarget());
 			
-			EnableOnDemandForPrincipalCommand cmd = new EnableOnDemandForPrincipalCommand();
-			cmd.setOnDemandAuthenticatorDTO(authenticator);
-			cmd.execute();
+			EnableOnDemandForPrincipalCommand enableOnDemandForPrincipal = new EnableOnDemandForPrincipalCommand();
+			enableOnDemandForPrincipal.setOnDemandAuthenticatorDTO(authenticator);
+			enableOnDemandForPrincipal.execute();
 			connection.sessionLogout(this.RSAsession);
 			logger.info("ODA ENABLED!");
 		} catch (Exception e) {
@@ -197,5 +167,27 @@ public class RSAConnUtils {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+    }
+    
+    public static AdminRoleDTO[] getPrincipalAdminRoles(PrincipalDTO user, RSAConnConnection connection) {
+    	GetPrincipalAdminRolesCommand getAdminRoles = new GetPrincipalAdminRolesCommand();
+    	getAdminRoles.setGuid(user.getGuid());
+        
+		try {
+			getAdminRoles.execute(connection.getRSASession());
+		} catch (DataNotFoundException e) {
+			e.printStackTrace();
+		} catch (InvalidArgumentException e) {
+			e.printStackTrace();
+		} catch (CommandException e) {
+			e.printStackTrace();
+		} catch (SystemException e) {
+			e.printStackTrace();
+		}
+    	AdminRoleDTO[] adminRoles = getAdminRoles.getAdminRoles();
+    		for(AdminRoleDTO adminRole : adminRoles) {
+    			logger.info("Admin role: " + adminRole);
+    		}
+    	return adminRoles;
     }
 }
